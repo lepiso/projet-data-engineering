@@ -1,0 +1,8 @@
+# Dépendances du pipeline.
+# À installer avec le fichier de contraintes Airflow (voir README) :
+#   pip install -r requirements.txt --constraint <URL constraints-3.3.1/constraints-3.12.txt>
+apache-airflow==3.3.1
+apache-airflow-providers-elasticsearch
+pandas
+requests
+elasticsearch
