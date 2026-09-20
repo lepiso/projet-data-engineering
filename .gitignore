@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Airflow (fichiers générés localement)
+airflow.db
+airflow.cfg
+airflow-webserver.pid
+standalone_admin_password.txt
+simple_auth_manager_passwords.json.generated
+logs/
+
+# Secrets : ne jamais publier
+.env
+*.pem
+*.key
+*.crt
+secrets/
+
+# Données générées par le pipeline (on garde seulement le dossier)
+data/*
+!data/.gitkeep
+
+# Divers
+*.log
+.vscode/
+.idea/
