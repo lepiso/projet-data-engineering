@@ -1,0 +1,30 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "doc_id": { "type": "keyword" },
+      "timestamp": { "type": "date" },
+      "date": { "type": "date", "format": "yyyy-MM-dd" },
+      "hour": { "type": "integer" },
+      "city": { "type": "keyword" },
+      "country": { "type": "keyword" },
+      "continent": { "type": "keyword" },
+      "hemisphere": { "type": "keyword" },
+      "latitude": { "type": "float" },
+      "longitude": { "type": "float" },
+      "location": { "type": "geo_point" },
+      "temperature_c": { "type": "float" },
+      "humidity_pct": { "type": "float" },
+      "precipitation_mm": { "type": "float" },
+      "wind_speed_kmh": { "type": "float" },
+      "weather_code": { "type": "integer" },
+      "weather_label": { "type": "keyword" },
+      "temperature_category": { "type": "keyword" },
+      "is_raining": { "type": "boolean" }
+    }
+  }
+}
