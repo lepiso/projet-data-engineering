@@ -1,0 +1,99 @@
+# Pile Elasticsearch + Kibana pour le projet météo, à usage local uniquement.
+# Usage : voir README.md (section "Lancement avec Docker").
+services:
+  setup:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.2
+    container_name: weather-es-setup
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+    user: "0"
+    command: >
+      bash -c '
+        if [ ! -f config/certs/ca.zip ]; then
+          echo "Génération du certificat CA...";
+          bin/elasticsearch-certutil ca --silent --pem -out config/certs/ca.zip;
+          unzip config/certs/ca.zip -d config/certs;
+        fi;
+        if [ ! -f config/certs/certs.zip ]; then
+          echo "Génération du certificat du noeud...";
+          bin/elasticsearch-certutil cert --silent --pem \
+            --ca-cert config/certs/ca/ca.crt --ca-key config/certs/ca/ca.key \
+            -out config/certs/certs.zip \
+            --name elasticsearch --dns elasticsearch --dns localhost --ip 127.0.0.1;
+          unzip config/certs/certs.zip -d config/certs;
+        fi;
+        chown -R 1000:0 config/certs;
+        find config/certs -type f -name "*.pem" -exec chmod 640 {} \;
+        find config/certs -type d -exec chmod 750 {} \;
+        echo "Certificats prêts.";
+      '
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f config/certs/elasticsearch/elasticsearch.crt ]"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.2
+    container_name: weather-elasticsearch
+    depends_on:
+      setup:
+        condition: service_healthy
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+      - es-data:/usr/share/elasticsearch/data
+    ports:
+      - "127.0.0.1:9200:9200"
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=weather-cluster
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true
+      - xpack.security.http.ssl.key=certs/elasticsearch/elasticsearch.key
+      - xpack.security.http.ssl.certificate=certs/elasticsearch/elasticsearch.crt
+      - xpack.security.http.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.enabled=true
+      - xpack.security.transport.ssl.key=certs/elasticsearch/elasticsearch.key
+      - xpack.security.transport.ssl.certificate=certs/elasticsearch/elasticsearch.crt
+      - xpack.security.transport.ssl.certificate_authorities=certs/ca/ca.crt
+      - xpack.security.transport.ssl.verification_mode=certificate
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sk -u elastic:${ELASTIC_PASSWORD:-changeme} https://localhost:9200 | grep -q tagline"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.5.2
+    container_name: weather-kibana
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - certs:/usr/share/kibana/config/certs
+      - kibana-data:/usr/share/kibana/data
+    ports:
+      - "127.0.0.1:5601:5601"
+    environment:
+      - SERVERNAME=kibana
+      - ELASTICSEARCH_HOSTS=https://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD:-changeme}
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=config/certs/ca/ca.crt
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -I http://localhost:5601 | grep -q 'HTTP/1.1 302'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+
+volumes:
+  certs:
+  es-data:
+  kibana-data:
