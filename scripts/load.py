@@ -41,6 +41,22 @@ def config_from_env():
     }
 
 
+def config_from_airflow_connection(conn_id="elasticsearch_weather"):
+    # Lit la configuration depuis une Connection Airflow (utilisé par le DAG).
+    from airflow.sdk import Connection
+    conn = Connection.get(conn_id)
+    extra = conn.extra_dejson or {}
+    return {
+        "host": conn.host,
+        "port": conn.port or 9200,
+        "scheme": conn.schema or "https",
+        "user": conn.login,
+        "password": conn.password,
+        "ca_certs": extra.get("ca_certs"),
+        "verify_certs": str(extra.get("verify_certs", "true")).lower() != "false",
+    }
+
+
 def get_client(config):
     url = f"{config['scheme']}://{config['host']}:{config['port']}"
     options = {"request_timeout": 30}

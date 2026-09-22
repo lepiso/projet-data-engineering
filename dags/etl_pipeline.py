@@ -44,9 +44,12 @@ with DAG(
     def transform_data(raw_path: str, **context):
         from transform import transform_weather
         run_date = context["logical_date"].strftime("%Y-%m-%d")
-        # up_to : ne garder que les heures déjà écoulées au moment logique de l'exécution
-        # (important en cas de rattrapage d'un jour passé).
-        up_to = context["logical_date"] + timedelta(days=1)
+        # up_to : ne garder que les heures déjà écoulées. On borne à la fin de la journée
+        # logique (utile en cas de rattrapage d'un jour passé), sans jamais dépasser l'heure
+        # réelle actuelle : Open-Meteo renvoie toute la journée en cours, prévisions incluses,
+        # et ces heures futures ne doivent pas être traitées comme des observations.
+        end_of_logical_day = context["logical_date"] + timedelta(days=1)
+        up_to = min(end_of_logical_day, pendulum.now("UTC"))
         path = transform_weather(raw_path, run_date=run_date, up_to=up_to)
         logger.info("Transformation terminée : %s", path)
         return path
@@ -62,8 +65,8 @@ with DAG(
 
     @task
     def load_to_elasticsearch(validated_path: str):
-        from load import load_to_elasticsearch as load_weather
-        summary = load_weather(validated_path)
+        from load import config_from_airflow_connection, load_to_elasticsearch as load_weather
+        summary = load_weather(validated_path, config=config_from_airflow_connection())
         logger.info("Chargement terminé : %s", summary)
         return summary
 
