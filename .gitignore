@@ -15,14 +15,14 @@ standalone_admin_password.txt
 simple_auth_manager_passwords.json.generated
 logs/
 
-# Secrets : ne jamais publier
+# Secrets 
 .env
 *.pem
 *.key
 *.crt
 secrets/
 
-# Données générées par le pipeline (on garde seulement le dossier)
+# Données générées par le pipeline
 data/*
 !data/.gitkeep
 
