@@ -1,0 +1,87 @@
+{
+  "1_temperature_par_ville": {
+    "question": "Quelle ville est la plus chaude ? la plus froide ?",
+    "kibana_visualization": "Bar chart horizontal",
+    "query": {
+      "size": 0,
+      "aggs": {
+        "par_ville": {
+          "terms": { "field": "city", "size": 10, "order": { "temp_moyenne": "desc" } },
+          "aggs": { "temp_moyenne": { "avg": { "field": "temperature_c" } } }
+        }
+      }
+    }
+  },
+  "2_evolution_temperature": {
+    "question": "Comment la température évolue-t-elle dans le temps ?",
+    "kibana_visualization": "Courbe temporelle (Line)",
+    "query": {
+      "size": 0,
+      "aggs": {
+        "par_heure": {
+          "date_histogram": { "field": "timestamp", "fixed_interval": "1h" },
+          "aggs": { "temp_moyenne": { "avg": { "field": "temperature_c" } } }
+        }
+      }
+    }
+  },
+  "3_repartition_meteo": {
+    "question": "Quelle est la répartition des types de temps observés ?",
+    "kibana_visualization": "Camembert (Pie)",
+    "query": {
+      "size": 0,
+      "aggs": {
+        "par_type": { "terms": { "field": "weather_label", "size": 10 } }
+      }
+    }
+  },
+  "4_amplitude_thermique": {
+    "question": "Quelle ville a l'amplitude thermique (max - min) la plus forte ?",
+    "kibana_visualization": "Tableau (Data Table)",
+    "query": {
+      "size": 0,
+      "aggs": {
+        "par_ville": {
+          "terms": { "field": "city", "size": 10 },
+          "aggs": {
+            "temp_max": { "max": { "field": "temperature_c" } },
+            "temp_min": { "min": { "field": "temperature_c" } },
+            "amplitude": {
+              "bucket_script": {
+                "buckets_path": { "max": "temp_max", "min": "temp_min" },
+                "script": "params.max - params.min"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "5_proportion_pluie": {
+    "question": "Dans quelle proportion des heures observées pleut-il, et où ?",
+    "kibana_visualization": "Bar chart",
+    "query": {
+      "size": 0,
+      "aggs": {
+        "par_ville": {
+          "terms": { "field": "city", "size": 10 },
+          "aggs": {
+            "pct_pluie": {
+              "filters": { "filters": { "pluie": { "term": { "is_raining": true } } } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "6_couverture_dataset": {
+    "question": "Combien d'observations, sur quelle période ?",
+    "kibana_visualization": "Metric (KPI)",
+    "query": {
+      "size": 0,
+      "aggs": {
+        "periode": { "stats": { "field": "timestamp" } }
+      }
+    }
+  }
+}
