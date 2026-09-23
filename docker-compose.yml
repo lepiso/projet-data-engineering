@@ -27,18 +27,14 @@ services:
         find config/certs -type d -exec chmod 750 {} \;
         echo "Certificats prêts.";
       '
-    healthcheck:
-      test: ["CMD-SHELL", "[ -f config/certs/elasticsearch/elasticsearch.crt ]"]
-      interval: 2s
-      timeout: 5s
-      retries: 30
+    restart: "no"
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.5.2
     container_name: weather-elasticsearch
     depends_on:
       setup:
-        condition: service_healthy
+        condition: service_completed_successfully
     volumes:
       - certs:/usr/share/elasticsearch/config/certs
       - es-data:/usr/share/elasticsearch/data
@@ -70,12 +66,37 @@ services:
       timeout: 10s
       retries: 30
 
+  # Conteneur "one-shot" : ne fait que fixer le mot de passe du compte technique
+  # kibana_system (créé sans mot de passe par défaut dans l'image officielle),
+  # une fois qu'Elasticsearch est réellement joignable.
+  setup_kibana_user:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.2
+    container_name: weather-setup-kibana-user
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - certs:/usr/share/elasticsearch/config/certs
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-changeme}
+      - KIBANA_PASSWORD=${KIBANA_PASSWORD:-changeme}
+    command: >
+      bash -c '
+        echo "Définition du mot de passe de kibana_system...";
+        curl -s --cacert config/certs/ca/ca.crt -u "elastic:$$ELASTIC_PASSWORD" \
+          -X POST https://elasticsearch:9200/_security/user/kibana_system/_password \
+          -H "Content-Type: application/json" \
+          -d "{\"password\":\"$$KIBANA_PASSWORD\"}";
+        echo "Mot de passe kibana_system défini.";
+      '
+    restart: "no"
+
   kibana:
     image: docker.elastic.co/kibana/kibana:9.5.2
     container_name: weather-kibana
     depends_on:
-      elasticsearch:
-        condition: service_healthy
+      setup_kibana_user:
+        condition: service_completed_successfully
     volumes:
       - certs:/usr/share/kibana/config/certs
       - kibana-data:/usr/share/kibana/data
